@@ -105,7 +105,10 @@ export default function CriarVideo() {
     { imagem: '', nome: '', preco: '' },
   ]);
   const [whatsapp, setWhatsapp] = useState('');
-  const [localizacao, setLocalizacao] = useState('');
+  // Estado dinâmico para armazenar valores de camadas de texto livre e localização
+  // Chave = id da camada, Valor = texto digitado
+  const [textosExtras, setTextosExtras] = useState<Record<string, string>>({});
+  
   const [etapa, setEtapa] = useState<'template' | 'dados'>('template');
   
   // Configurações
@@ -236,7 +239,11 @@ export default function CriarVideo() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           template: templateSelecionado,
-          dados: { produtos, whatsapp, localizacao }
+          dados: { 
+            produtos, 
+            whatsapp, 
+            textosExtras // Envia o objeto com os textos extras
+          }
         })
       });
 
@@ -570,21 +577,25 @@ export default function CriarVideo() {
                 />
               </div>
 
-              {/* Localização (se o template tiver) */}
-              {templateSelecionado.camadas?.some(c => c.tipo === 'localizacao') && (
-                <div className="bg-gray-800 rounded-xl shadow-md p-6 border border-gray-700">
+              {/* Campos Dinâmicos (Texto Livre e Localização) */}
+              {templateSelecionado.camadas?.filter(c => c.tipo === 'texto' || c.tipo === 'localizacao').map((camada) => (
+                <div key={camada.id} className="bg-gray-800 rounded-xl shadow-md p-6 border border-gray-700">
                   <h3 className="font-bold text-lg mb-4 flex items-center gap-2 text-white">
-                    📍 Localização
+                    {camada.tipo === 'localizacao' ? '📍 Localização' : '✍️ Texto Livre'}
+                    <span className="text-xs font-normal text-gray-400 ml-2">({camada.nome || 'Sem nome'})</span>
                   </h3>
                   <input
                     type="text"
-                    placeholder="Rua das Flores, 123 - Centro"
-                    value={localizacao}
-                    onChange={(e) => setLocalizacao(e.target.value)}
+                    placeholder={camada.texto || "Digite aqui..."} // Usa o texto padrão do template como placeholder
+                    value={textosExtras[camada.id] ?? camada.texto ?? ''} // Usa valor digitado ou padrão
+                    onChange={(e) => setTextosExtras(prev => ({
+                      ...prev,
+                      [camada.id]: e.target.value
+                    }))}
                     className="w-full px-4 py-3 bg-gray-900 border-2 border-gray-600 rounded-lg text-white placeholder-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                   />
                 </div>
-              )}
+              ))}
 
               {/* Botão Gerar */}
               {!videoUrl ? (
@@ -660,7 +671,7 @@ export default function CriarVideo() {
                       dados: {
                         produtos,
                         whatsapp,
-                        localizacao,
+                        textosExtras, // Passa textos extras para o preview
                       },
                     }}
                     durationInFrames={templateSelecionado.duracao * templateSelecionado.fps}

@@ -249,7 +249,9 @@ const LayerComponent: React.FC<{
 
   if (layer.tipo === 'localizacao') {
     // Fallback: Se não tiver dados dinâmicos, tenta usar o texto da camada (template)
-    const localizacao = dados.localizacao || layer.conteudo?.texto;
+    // Tenta: 1. dados.textos[layer.id], 2. dados.localizacao (legacy), 3. template default
+    const localizacao = dados.textos?.[layer.id] || dados.localizacao || layer.conteudo?.texto;
+    
     if (!localizacao) return null;
 
     return (
@@ -271,6 +273,7 @@ const LayerComponent: React.FC<{
   }
 
   if (layer.tipo === 'texto') {
+    // Tenta: 1. dados.textos[layer.id], 2. template default
     const texto = dados.textos?.[layer.id] || layer.conteudo?.texto || layer.nome;
 
     return (
