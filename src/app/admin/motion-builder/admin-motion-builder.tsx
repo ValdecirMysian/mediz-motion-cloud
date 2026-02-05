@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 
 // ============================================================================
 // TIPOS E CONSTANTES
@@ -101,22 +101,6 @@ export default function AdminMotionBuilder() {
   const [camadaSelecionada, setCamadaSelecionada] = useState<string | null>(null);
   const [tempoAtual, setTempoAtual] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [templatesSalvos, setTemplatesSalvos] = useState<Template[]>([]);
-
-  // Carrega templates salvos ao montar
-  useEffect(() => {
-    const carregarTemplates = () => {
-      try {
-        const salvos = JSON.parse(localStorage.getItem('mediz-templates') || '[]');
-        setTemplatesSalvos(salvos);
-        console.log(`📦 ${salvos.length} templates carregados do localStorage`);
-      } catch (error) {
-        console.error('Erro ao carregar templates:', error);
-      }
-    };
-    
-    carregarTemplates();
-  }, []);
 
   // ========================================================================
   // FUNÇÕES DE MANIPULAÇÃO
