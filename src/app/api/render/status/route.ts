@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getRenderProgress } from '@remotion/lambda/client';
-import { REGION } from '../../../../../../config.mjs';
+import { REGION } from '@/lib/config';
 
 export async function POST(req: NextRequest) {
   try {

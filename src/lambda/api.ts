@@ -7,6 +7,7 @@ import {
 } from "../../types/schema";
 import { CompositionProps } from "../../types/constants";
 import { ApiResponse } from "../helpers/api-response";
+import { REGION, SITE_NAME } from "@/lib/config";
 
 const makeRequest = async <Res>(
   endpoint: string,

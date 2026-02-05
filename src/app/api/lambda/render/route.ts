@@ -9,7 +9,7 @@ import {
   REGION,
   SITE_NAME,
   TIMEOUT,
-} from "../../../../../config.mjs";
+} from "@/lib/config";
 import { RenderRequest } from "../../../../../types/schema";
 import { executeApi } from "../../../../helpers/api-response";
 

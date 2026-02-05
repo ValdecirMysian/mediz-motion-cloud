@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { renderMediaOnLambda, speculateFunctionName } from '@remotion/lambda/client';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
-import { DISK, RAM, REGION, SITE_NAME, TIMEOUT } from '../../../../../config.mjs';
+import { DISK, RAM, REGION, SITE_NAME, TIMEOUT } from '@/lib/config';
 
 // Configuração do cliente S3
 const s3Client = new S3Client({
