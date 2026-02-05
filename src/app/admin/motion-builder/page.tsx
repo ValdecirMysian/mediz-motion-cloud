@@ -203,15 +203,20 @@ export default function AdminMotionBuilder() {
 
   const carregarTemplatesSalvos = async () => {
     try {
-      const response = await fetch('/api/templates/list');
-      const data = await response.json();
-      
-      if (data.templates) {
-        setTemplatesSalvos(data.templates);
-        console.log(`📦 ${data.templates.length} templates carregados do servidor`);
+      // Tenta carregar do localStorage primeiro
+      const localData = localStorage.getItem('mediz-templates');
+      if (localData) {
+        const templates = JSON.parse(localData);
+        setTemplatesSalvos(templates);
+        console.log(`📦 ${templates.length} templates carregados do localStorage`);
+      } else {
+        // Fallback: Tenta API (apenas dev) ou inicia vazio
+        console.log('Nenhum template no localStorage');
+        setTemplatesSalvos([]);
       }
     } catch (error) {
       console.error('Erro ao carregar templates:', error);
+      setTemplatesSalvos([]);
     }
   };
 
@@ -220,14 +225,10 @@ export default function AdminMotionBuilder() {
     if (!confirm('Tem certeza que deseja excluir este template?')) return;
 
     try {
-      const response = await fetch(`/api/templates/delete?id=${id}`, {
-        method: 'DELETE',
-      });
-      
-      if (!response.ok) throw new Error('Falha ao excluir');
-      
-      setTemplatesSalvos(prev => prev.filter(t => t.id !== id));
-      
+      const novosTemplates = templatesSalvos.filter(t => t.id !== id);
+      setTemplatesSalvos(novosTemplates);
+      localStorage.setItem('mediz-templates', JSON.stringify(novosTemplates));
+      console.log('Template excluído do localStorage');
     } catch (error) {
       console.error('Erro ao excluir:', error);
       alert('Erro ao excluir template.');
@@ -313,25 +314,26 @@ export default function AdminMotionBuilder() {
         setTemplate(templateParaSalvar); // Atualiza estado local também
       }
       
-      const response = await fetch('/api/templates/save', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(templateParaSalvar)
-      });
+      // Simula delay de rede para UX
+      await new Promise(resolve => setTimeout(resolve, 500));
 
-      if (!response.ok) throw new Error('Falha ao salvar');
-
-      const data = await response.json();
-
-      console.log('✅ Template salvo no servidor:', templateParaSalvar);
+      // Salva no localStorage
+      const templates = JSON.parse(localStorage.getItem('mediz-templates') || '[]');
+      const index = templates.findIndex((t: Template) => t.id === templateParaSalvar.id);
       
-      // Atualiza lista e estado local com a thumbnail gerada
-      if (data.thumbnail) {
-        setTemplate(prev => ({ ...prev, thumbnail: data.thumbnail }));
+      if (index >= 0) {
+        templates[index] = templateParaSalvar;
+      } else {
+        templates.push(templateParaSalvar);
       }
       
-      await carregarTemplatesSalvos(); // Atualiza lista
-      alert(`✅ Template "${templateParaSalvar.nome}" salvo com sucesso!`);
+      localStorage.setItem('mediz-templates', JSON.stringify(templates));
+
+      console.log('✅ Template salvo no localStorage:', templateParaSalvar);
+      
+      // Atualiza lista e estado local
+      setTemplatesSalvos(templates);
+      alert(`✅ Template "${templateParaSalvar.nome}" salvo com sucesso no Navegador!`);
       
     } catch (error) {
       console.error('❌ Erro ao salvar:', error);
