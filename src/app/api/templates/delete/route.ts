@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
+import { db } from '@vercel/postgres';
 
 export async function DELETE(req: NextRequest) {
   try {
@@ -11,24 +10,14 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'ID do template não fornecido' }, { status: 400 });
     }
 
-    const safeId = id.replace(/[^a-zA-Z0-9-_]/g, '');
-    const templatePath = path.join(process.cwd(), 'public', 'templates', `${safeId}.json`);
-    const thumbnailPath = path.join(process.cwd(), 'public', 'thumbnails', `${safeId}.jpg`);
+    const client = await db.connect();
 
-    let deleted = false;
+    // Deleta do banco
+    const result = await client.sql`
+      DELETE FROM templates WHERE id = ${id}
+    `;
 
-    // Deleta JSON
-    if (fs.existsSync(templatePath)) {
-      fs.unlinkSync(templatePath);
-      deleted = true;
-    }
-
-    // Deleta Thumbnail (se existir)
-    if (fs.existsSync(thumbnailPath)) {
-      fs.unlinkSync(thumbnailPath);
-    }
-
-    if (!deleted) {
+    if (result.rowCount === 0) {
       return NextResponse.json({ error: 'Template não encontrado' }, { status: 404 });
     }
 

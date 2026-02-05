@@ -1,26 +1,18 @@
 import { NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
+import { db } from '@vercel/postgres';
 
 export async function GET() {
   try {
-    const templatesDir = path.join(process.cwd(), 'public', 'templates');
-
-    if (!fs.existsSync(templatesDir)) {
-      return NextResponse.json({ templates: [] });
-    }
-
-    const files = fs.readdirSync(templatesDir).filter(file => file.endsWith('.json'));
+    const client = await db.connect();
     
-    const templates = files.map(file => {
-      try {
-        const content = fs.readFileSync(path.join(templatesDir, file), 'utf-8');
-        return JSON.parse(content);
-      } catch (e) {
-        console.error(`Erro ao ler template ${file}:`, e);
-        return null;
-      }
-    }).filter(t => t !== null);
+    // Busca todos os templates do banco
+    // A coluna 'data' já contém o JSON completo do template
+    const result = await client.sql`
+      SELECT data FROM templates ORDER BY updated_at DESC
+    `;
+    
+    // Extrai o objeto JSON de cada linha
+    const templates = result.rows.map(row => row.data);
 
     return NextResponse.json({ templates });
   } catch (error) {
