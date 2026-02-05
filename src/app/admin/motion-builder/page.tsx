@@ -319,7 +319,10 @@ export default function AdminMotionBuilder() {
         body: JSON.stringify(templateParaSalvar)
       });
 
-      if (!response.ok) throw new Error('Falha ao salvar');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || errorData.message || 'Falha desconhecida ao salvar');
+      }
 
       const data = await response.json();
 
@@ -333,9 +336,9 @@ export default function AdminMotionBuilder() {
       await carregarTemplatesSalvos(); // Atualiza lista
       alert(`✅ Template "${templateParaSalvar.nome}" salvo com sucesso!`);
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Erro ao salvar:', error);
-      alert('Erro ao salvar template!');
+      alert(`Erro ao salvar template: ${error.message}`);
     } finally {
       setIsSaving(false);
     }
