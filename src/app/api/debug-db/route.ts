@@ -22,7 +22,12 @@ export async function GET() {
     return NextResponse.json({ 
       status: 'ok', 
       message: 'Conexão bem sucedida e tabela verificada',
-      count: result.rows[0].count 
+      count: result.rows[0].count,
+      env_check: {
+        has_postgres_url: !!process.env.POSTGRES_URL,
+        has_database_url: !!process.env.DATABASE_URL,
+        node_env: process.env.NODE_ENV
+      }
     });
 
   } catch (error: any) {
@@ -30,7 +35,12 @@ export async function GET() {
     return NextResponse.json({ 
       status: 'error', 
       message: error.message,
-      detail: JSON.stringify(error)
+      detail: JSON.stringify(error),
+      env_check: {
+        has_postgres_url: !!process.env.POSTGRES_URL,
+        has_database_url: !!process.env.DATABASE_URL,
+        node_env: process.env.NODE_ENV
+      }
     }, { status: 500 });
   }
 }
