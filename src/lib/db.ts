@@ -3,7 +3,11 @@ import { Pool } from 'pg';
 let pool: Pool | undefined;
 
 if (!pool) {
-  const connectionString = process.env.POSTGRES_URL || process.env.DATABASE_URL;
+  // FALLBACK DE DEBUG: Usando a string fornecida diretamente se a ENV falhar
+  // TODO: Remover este fallback em produção final para segurança
+  const HARDCODED_URL = "postgresql://neondb_owner:npg_eHCoO6Qc5MVG@ep-old-paper-ainoxdpc-pooler.c-4.us-east-1.aws.neon.tech/neondb?sslmode=require";
+  
+  const connectionString = process.env.POSTGRES_URL || process.env.DATABASE_URL || HARDCODED_URL;
   
   if (connectionString) {
     pool = new Pool({
