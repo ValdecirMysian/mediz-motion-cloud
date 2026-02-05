@@ -1,9 +1,14 @@
 import { AbsoluteFill, Video, Img, useCurrentFrame, useVideoConfig, interpolate, Easing } from 'remotion';
-import { getLayerAnimation, LayerTimingConfig } from './motion-animations';
+import { getLayerAnimation } from './motion-animations';
 
 // ============================================================================
 // TIPOS
 // ============================================================================
+
+type AnimationType =
+  | 'scale-in' | 'zoom-explosion' | 'bounce' | 'rotate-in' | 'flip-in-y' | 'elastic-scale' | 'blur-in' | 'pop-in' | 'spiral-in' | 'swing-in'
+  | 'fade-out' | 'slide-out-right' | 'slide-out-left' | 'slide-out-up' | 'slide-out-down'
+  | 'scale-out' | 'zoom-implosion' | 'rotate-out' | 'flip-out-y' | 'blur-out' | 'pop-out' | 'spiral-out' | 'swing-out';
 
 interface LayerData {
   id: string;
@@ -17,11 +22,11 @@ interface LayerData {
   tamanho: { width: number; height: number };
   // Animações
   animacaoEntrada: {
-    tipo: string;
+    tipo: AnimationType;
     duracao: number;
   };
   animacaoSaida?: {
-    tipo: string;
+    tipo: AnimationType;
     duracao: number;
   };
   // Estilos
@@ -32,6 +37,7 @@ interface LayerData {
     textAlign?: string;
     backgroundColor?: string;
     objectFit?: 'cover' | 'contain' | 'fill';
+    fontFamily?: string;
   };
   textDelay?: number;
   textPosition?: { x: number; y: number };
@@ -290,7 +296,7 @@ const LayerComponent: React.FC<{
 // COMPONENTE PRINCIPAL DO VÍDEO
 // ============================================================================
 
-export const VideoMotion: React.FC<VideoMotionProps> = ({ template, dados }) => {
+export const VideoMotion = ({ template, dados }: VideoMotionProps) => {
   // Contador para índice de produtos
   let produtoIndex = 0;
 

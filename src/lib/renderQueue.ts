@@ -63,7 +63,7 @@ function extractBase64ToFiles(obj: any): any {
             const filename = `asset-${Date.now()}-${Math.random().toString(36).substr(2, 5)}.${ext}`;
             const filePath = path.join(TEMP_ASSETS_DIR, filename);
             
-            fs.writeFileSync(filePath, Buffer.from(data, 'base64'));
+            fs.writeFileSync(filePath, Buffer.from(data, 'base64') as unknown as Uint8Array);
             
             // Substitui base64 por URL local absoluta (file protocol)
             // Remotion aceita file:/// paths

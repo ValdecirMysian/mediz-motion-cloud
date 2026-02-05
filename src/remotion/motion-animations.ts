@@ -1,4 +1,4 @@
-import { spring, interpolate } from 'remotion';
+import { spring, interpolate, Easing } from 'remotion';
 
 // ============================================================================
 // TIPOS
@@ -415,7 +415,7 @@ export const getAnimationValue = (
   type: AnimationType,
   params: AnimationParams
 ): { opacity?: number; translateX?: number; translateY?: number; scale?: number; rotate?: number; rotateY?: number; blur?: number } => {
-  const { frame } = params;
+  // const { frame } = params;
   
   // Animações de Entrada
   if (type === 'fade-in') {

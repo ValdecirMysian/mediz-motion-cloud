@@ -139,7 +139,7 @@ export const RemotionRoot: React.FC = () => {
       {/* ========== NOVO: VideoMotion - Teste de Animações ========== */}
       <Composition
         id="MedizMotionTeste"
-        component={VideoMotion}
+        component={VideoMotion as React.FC<any>}
         durationInFrames={450} // 15 segundos a 30fps
         fps={30}
         width={1080}

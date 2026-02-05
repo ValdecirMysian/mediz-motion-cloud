@@ -8,9 +8,9 @@ import { useState, useRef } from 'react';
 
 type AnimationType = 
   | 'fade-in' | 'slide-right' | 'slide-left' | 'slide-up' | 'slide-down'
-  | 'scale-in' | 'zoom-explosion' | 'bounce'
-  | 'fade-out' | 'slide-out-right' | 'slide-out-left' | 'slide-out-up'
-  | 'scale-out' | 'zoom-implosion';
+  | 'scale-in' | 'zoom-explosion' | 'bounce' | 'rotate-in' | 'flip-in-y' | 'elastic-scale' | 'blur-in' | 'pop-in' | 'spiral-in' | 'swing-in'
+  | 'fade-out' | 'slide-out-right' | 'slide-out-left' | 'slide-out-up' | 'slide-out-down'
+  | 'scale-out' | 'zoom-implosion' | 'rotate-out' | 'flip-out-y' | 'blur-out' | 'pop-out' | 'spiral-out' | 'swing-out';
 
 type LayerType = 'produto-preco' | 'preco' | 'whatsapp' | 'localizacao' | 'texto';
 
