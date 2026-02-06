@@ -225,8 +225,8 @@ const LayerComponent: React.FC<{
   }
 
   if (layer.tipo === 'whatsapp') {
-    // Fallback: Se não tiver dados dinâmicos, tenta usar o texto da camada (template)
-    const whatsapp = dados.whatsapp || layer.conteudo?.texto;
+    // Se não tiver dados do cliente, NÃO exibe nada (opcional)
+    const whatsapp = dados.whatsapp;
     if (!whatsapp) return null;
 
     return (
@@ -248,9 +248,9 @@ const LayerComponent: React.FC<{
   }
 
   if (layer.tipo === 'localizacao') {
-    // Fallback: Se não tiver dados dinâmicos, tenta usar o texto da camada (template)
-    // Tenta: 1. dados.textos[layer.id], 2. dados.localizacao (legacy), 3. template default
-    const localizacao = dados.textos?.[layer.id] || dados.localizacao || layer.conteudo?.texto;
+    // Tenta: 1. dados.textos[layer.id], 2. dados.localizacao (legacy)
+    // Se ambos vazios, NÃO exibe nada
+    const localizacao = dados.textos?.[layer.id] || dados.localizacao;
     
     if (!localizacao) return null;
 
@@ -273,8 +273,11 @@ const LayerComponent: React.FC<{
   }
 
   if (layer.tipo === 'texto') {
-    // Tenta: 1. dados.textos[layer.id], 2. template default
-    const texto = dados.textos?.[layer.id] || layer.conteudo?.texto || layer.nome;
+    // Tenta: 1. dados.textos[layer.id]
+    // Se vazio, NÃO exibe nada
+    const texto = dados.textos?.[layer.id];
+    
+    if (!texto) return null;
 
     return (
       <div style={{

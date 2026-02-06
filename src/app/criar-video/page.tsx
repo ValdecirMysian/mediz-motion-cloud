@@ -586,8 +586,8 @@ export default function CriarVideo() {
                   </h3>
                   <input
                     type="text"
-                    placeholder={camada.texto || "Digite aqui..."} // Usa o texto padrão do template como placeholder
-                    value={textosExtras[camada.id] ?? camada.texto ?? ''} // Usa valor digitado ou padrão
+                    placeholder={camada.texto || "Opcional - Deixe em branco para ocultar"} // Placeholder mostra a sugestão
+                    value={textosExtras[camada.id] || ''} // Valor limpo: só o que foi digitado
                     onChange={(e) => setTextosExtras(prev => ({
                       ...prev,
                       [camada.id]: e.target.value
