@@ -242,7 +242,7 @@ export default function CriarVideo() {
           dados: { 
             produtos, 
             whatsapp, 
-            textosExtras // Envia o objeto com os textos extras
+            textos: textosExtras // Corrigido aqui também para a API
           }
         })
       });
@@ -671,7 +671,7 @@ export default function CriarVideo() {
                       dados: {
                         produtos,
                         whatsapp,
-                        textosExtras, // Passa textos extras para o preview
+                        textos: { ...textosExtras }, // Corrigido: envia como 'textos' para bater com a interface do VideoMotion
                       },
                     }}
                     durationInFrames={templateSelecionado.duracao * templateSelecionado.fps}
