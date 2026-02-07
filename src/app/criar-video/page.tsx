@@ -164,30 +164,37 @@ export default function CriarVideo() {
   const uploadImageToS3 = async (base64: string): Promise<string> => {
     if (!base64 || !base64.startsWith('data:')) return base64; // Já é URL ou vazio
 
-    const blob = base64ToBlob(base64);
-    const ext = blob.type.split('/')[1] || 'png';
-    const filename = `render-asset-${Date.now()}-${Math.random().toString(36).substr(2, 5)}.${ext}`;
+    // Tenta primeiro via URL assinada (mais rápido, mas pode dar erro de CORS)
+    try {
+      const blob = base64ToBlob(base64);
+      const ext = blob.type.split('/')[1] || 'png';
+      const filename = `render-asset-${Date.now()}-${Math.random().toString(36).substr(2, 5)}.${ext}`;
 
-    // 1. Obter URL pré-assinada
-    const res = await fetch('/api/upload-url', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ filename, contentType: blob.type }),
-    });
+      // TENTATIVA 1: Rota Proxy (Server-Side Upload)
+      // Usamos essa rota para evitar problemas de CORS no bucket da AWS
+      // O servidor Next.js recebe o arquivo e manda para o S3
+      const res = await fetch('/api/proxy-upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          filename, 
+          contentType: blob.type,
+          content: base64 // Envia o base64 completo
+        }),
+      });
 
-    if (!res.ok) throw new Error('Falha ao obter permissão de upload');
-    const { uploadUrl, publicUrl } = await res.json();
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.details || 'Falha no proxy upload');
+      }
 
-    // 2. Fazer Upload para o S3
-    const uploadRes = await fetch(uploadUrl, {
-      method: 'PUT',
-      body: blob,
-      headers: { 'Content-Type': blob.type },
-    });
+      const { publicUrl } = await res.json();
+      return publicUrl;
 
-    if (!uploadRes.ok) throw new Error('Falha no upload da imagem para a nuvem');
-
-    return publicUrl;
+    } catch (err) {
+      console.warn('⚠️ Falha no upload via Proxy, tentando método legado...', err);
+      throw err; // Por enquanto, falha se o proxy não funcionar
+    }
   };
 
   const handleAssetSelect = (url: string) => {
