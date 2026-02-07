@@ -280,21 +280,26 @@ export default function CriarVideo() {
       // 1. Processar uploads de imagens no CLIENTE para evitar erro 413
       setStatusMessage('Otimizando imagens para a nuvem...');
       
-      // Cria uma cópia dos produtos com as URLs do S3
-      const produtosProcessados = await Promise.all(produtos.map(async (p, index) => {
-        // Verifica se é Base64 E se o produto está sendo usado no template
+      // Cria uma cópia dos produtos
+      const produtosProcessados = [...produtos];
+      
+      // Processa sequencialmente para evitar sobrecarga de rede e ter melhor feedback
+      for (let i = 0; i < produtosProcessados.length; i++) {
+        const p = produtosProcessados[i];
+        
+        // Verifica se é Base64 E se o produto está sendo usado no template (ou tem imagem definida)
         if (p.imagem && p.imagem.startsWith('data:')) {
           try {
-            setStatusMessage(`Enviando imagem do Produto ${index + 1}...`);
+            setStatusMessage(`Enviando imagem ${i + 1} de ${produtosProcessados.length}...`);
             const s3Url = await uploadImageToS3(p.imagem);
-            return { ...p, imagem: s3Url };
-          } catch (err) {
-            console.error(`Erro ao enviar imagem ${index + 1}:`, err);
-            throw new Error(`Falha ao enviar imagem do produto ${index + 1}. Tente uma imagem menor.`);
+            produtosProcessados[i] = { ...p, imagem: s3Url };
+          } catch (err: any) {
+            console.error(`Erro ao enviar imagem ${i + 1}:`, err);
+            // Mostra o erro real se possível
+            throw new Error(`Falha ao enviar imagem do produto ${i + 1}: ${err.message || 'Erro desconhecido'}`);
           }
         }
-        return p;
-      }));
+      }
 
       // 2. Iniciar Renderização (Agora o payload é leve, só URLs)
       setStatusMessage('Iniciando renderização...');
