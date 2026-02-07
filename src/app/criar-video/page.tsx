@@ -282,6 +282,7 @@ export default function CriarVideo() {
       
       // Cria uma cópia dos produtos com as URLs do S3
       const produtosProcessados = await Promise.all(produtos.map(async (p, index) => {
+        // Verifica se é Base64 E se o produto está sendo usado no template
         if (p.imagem && p.imagem.startsWith('data:')) {
           try {
             setStatusMessage(`Enviando imagem do Produto ${index + 1}...`);
