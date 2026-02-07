@@ -1,70 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { renderMediaOnLambda, speculateFunctionName } from '@remotion/lambda/client';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { DISK, RAM, REGION, SITE_NAME, TIMEOUT } from '@/lib/config';
 
-// Configuração do cliente S3
-const s3Client = new S3Client({
-  region: REGION,
-  credentials: {
-    accessKeyId: process.env.REMOTION_AWS_ACCESS_KEY_ID || '',
-    secretAccessKey: process.env.REMOTION_AWS_SECRET_ACCESS_KEY || '',
-  },
-});
-
-// Nome do bucket (hardcoded pelo deploy ou pode vir de env)
-// Dica: Use o mesmo nome que apareceu no 'npm run deploy'
-const BUCKET_NAME = 'remotionlambda-useast1-f6gpclay1c'; 
-
-// Helper: Upload de Base64 para S3
-async function uploadBase64ToS3(base64Data: string, folder: string): Promise<string> {
-  const matches = base64Data.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
-  if (!matches || matches.length !== 3) {
-    return base64Data; // Não é base64 ou inválido
-  }
-
-  const type = matches[1];
-  const buffer = Buffer.from(matches[2], 'base64');
-  
-  let ext = 'bin';
-  if (type.includes('image/png')) ext = 'png';
-  else if (type.includes('image/jpeg')) ext = 'jpg';
-  else if (type.includes('video/mp4')) ext = 'mp4';
-
-  const filename = `${folder}/${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${ext}`;
-
-  await s3Client.send(new PutObjectCommand({
-    Bucket: BUCKET_NAME,
-    Key: filename,
-    Body: buffer,
-    ContentType: type,
-    ACL: 'public-read', // Opcional, dependendo da config do bucket
-  }));
-
-  return `https://${BUCKET_NAME}.s3.${REGION}.amazonaws.com/${filename}`;
-}
-
-// Helper: Percorre o objeto recursivamente e faz upload de tudo que for Base64
-async function processAssets(obj: any): Promise<any> {
-  if (!obj) return obj;
-  if (Array.isArray(obj)) {
-    return Promise.all(obj.map(item => processAssets(item)));
-  }
-  if (typeof obj === 'object') {
-    const newObj: any = { ...obj };
-    for (const key in newObj) {
-      const value = newObj[key];
-      if (typeof value === 'string' && value.startsWith('data:')) {
-        console.log(`📤 Uploading asset for key: ${key}`);
-        newObj[key] = await uploadBase64ToS3(value, 'uploads');
-      } else if (typeof value === 'object') {
-        newObj[key] = await processAssets(value);
-      }
-    }
-    return newObj;
-  }
-  return obj;
-}
+// ----------------------------------------------------------------------------
+// NOTA: Agora o upload de imagens é feito no CLIENTE (frontend) via /api/upload-url.
+// Este endpoint recebe apenas URLs já prontas, então não precisamos mais do S3Client aqui.
+// ----------------------------------------------------------------------------
 
 export async function POST(req: NextRequest) {
   try {
@@ -85,25 +26,10 @@ export async function POST(req: NextRequest) {
     }
 
     console.log('🚀 Iniciando processo via AWS Lambda...');
-
-    // 1. Upload de Assets (Base64 -> S3)
-    // Isso transforma imagens locais em URLs públicas que a Lambda consegue acessar
-    console.log('☁️ Enviando assets para o S3...');
     
-    try {
-      // Processa assets em paralelo para evitar timeout
-      [template, dados] = await Promise.all([
-        processAssets(template),
-        processAssets(dados)
-      ]);
-    } catch (uploadError: any) {
-      console.error('❌ Erro no upload de assets para S3:', uploadError);
-      return NextResponse.json({ 
-        error: 'Falha ao processar imagens (Upload S3)', 
-        details: uploadError.message 
-      }, { status: 500 });
-    }
-
+    // (Opcional) Verificação de segurança: garantir que não há Base64 gigante aqui
+    // Se houver, logamos um aviso, mas tentamos prosseguir (ou falhará na Lambda por tamanho)
+    
     // 2. Acionar Renderização na Lambda
     console.log('⚡ Invocando Lambda...');
     
