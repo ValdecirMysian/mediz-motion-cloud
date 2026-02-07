@@ -3,10 +3,10 @@ import { NextResponse } from 'next/server';
 
 export async function GET() {
   try {
-    const client = await db.connect();
+    // Usando db.sql direto para evitar leak de conexão
     
     // Tenta criar a tabela novamente para garantir
-    await client.sql`
+    await db.sql`
       CREATE TABLE IF NOT EXISTS templates (
         id VARCHAR(255) PRIMARY KEY,
         nome VARCHAR(255) NOT NULL,
@@ -17,9 +17,9 @@ export async function GET() {
     `;
 
     // Tenta fazer um select simples
-    const result = await client.sql`SELECT count(*) FROM templates`;
+    const result = await db.sql`SELECT count(*) FROM templates`;
 
-    return NextResponse.json({ 
+    return NextResponse.json({  
       status: 'ok', 
       message: 'Conexão bem sucedida e tabela verificada',
       count: result.rows[0].count,

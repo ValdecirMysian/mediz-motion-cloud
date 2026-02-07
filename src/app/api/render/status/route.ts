@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getRenderProgress } from '@remotion/lambda/client';
-import { REGION } from '@/lib/config';
+import { getRenderProgress, speculateFunctionName } from '@remotion/lambda/client';
+import { REGION, DISK, RAM, TIMEOUT } from '@/lib/config';
 
 export async function POST(req: NextRequest) {
   try {
@@ -14,7 +14,11 @@ export async function POST(req: NextRequest) {
     const progress = await getRenderProgress({
       renderId,
       bucketName,
-      functionName: 'remotion-render-4-0-417-mem2048mb-disk10240mb-240sec', // Melhor pegar dinâmico se possível, mas ok hardcoded por enquanto
+      functionName: speculateFunctionName({
+        diskSizeInMb: DISK,
+        memorySizeInMb: RAM,
+        timeoutInSeconds: TIMEOUT,
+      }),
       region: REGION,
     });
 

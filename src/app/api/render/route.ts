@@ -68,7 +68,16 @@ async function processAssets(obj: any): Promise<any> {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
+    // Verificação se o body é um JSON válido antes de fazer parse
+    let body;
+    try {
+      const rawBody = await req.text();
+      body = JSON.parse(rawBody);
+    } catch (e) {
+      console.error('❌ Invalid JSON Body:', e);
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
+
     let { template, dados } = body;
 
     if (!template || !dados) {
@@ -80,8 +89,20 @@ export async function POST(req: NextRequest) {
     // 1. Upload de Assets (Base64 -> S3)
     // Isso transforma imagens locais em URLs públicas que a Lambda consegue acessar
     console.log('☁️ Enviando assets para o S3...');
-    template = await processAssets(template);
-    dados = await processAssets(dados);
+    
+    try {
+      // Processa assets em paralelo para evitar timeout
+      [template, dados] = await Promise.all([
+        processAssets(template),
+        processAssets(dados)
+      ]);
+    } catch (uploadError: any) {
+      console.error('❌ Erro no upload de assets para S3:', uploadError);
+      return NextResponse.json({ 
+        error: 'Falha ao processar imagens (Upload S3)', 
+        details: uploadError.message 
+      }, { status: 500 });
+    }
 
     // 2. Acionar Renderização na Lambda
     console.log('⚡ Invocando Lambda...');

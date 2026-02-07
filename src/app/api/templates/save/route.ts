@@ -13,21 +13,20 @@ export async function POST(req: NextRequest) {
     // SALVAR NO BANCO DE DADOS (POSTGRES)
     // ========================================================================
     
-    const client = await db.connect();
-
+    // Usamos db.sql direto para garantir release da conexão
     // Verifica se já existe para fazer update ou insert
-    const existing = await client.sql`SELECT id FROM templates WHERE id = ${template.id}`;
+    const existing = await db.sql`SELECT id FROM templates WHERE id = ${template.id}`;
 
     if (existing.rows.length > 0) {
       // Update
-      await client.sql`
+      await db.sql`
         UPDATE templates 
         SET nome = ${template.nome}, data = ${JSON.stringify(template)}, updated_at = NOW()
         WHERE id = ${template.id}
       `;
     } else {
       // Insert
-      await client.sql`
+      await db.sql`
         INSERT INTO templates (id, nome, data)
         VALUES (${template.id}, ${template.nome}, ${JSON.stringify(template)})
       `;

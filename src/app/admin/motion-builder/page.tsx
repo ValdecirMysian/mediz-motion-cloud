@@ -302,8 +302,21 @@ export default function AdminMotionBuilder() {
   };
 
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState<string>('');
 
   const salvarTemplate = async () => {
+    if (isUploading) {
+      alert("⚠️ Aguarde o upload do vídeo terminar antes de salvar.");
+      return;
+    }
+
+    // Verificação de segurança para payload muito grande
+    if (template.videoFundo && template.videoFundo.startsWith('data:') && template.videoFundo.length > 4 * 1024 * 1024) {
+      alert("❌ O vídeo de fundo é muito grande para ser salvo diretamente (limite 4.5MB).\n\nPor favor, configure o upload S3 corretamente ou use um vídeo menor.");
+      return;
+    }
+
     try {
       setIsSaving(true);
       // Se for um novo template (id padrão), gera um ID único
@@ -344,16 +357,77 @@ export default function AdminMotionBuilder() {
     }
   };
 
-  const handleUploadVideo = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleUploadVideo = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      // Tenta usar Base64 para persistência (cuidado com tamanho)
-      // Se for muito grande, talvez falhe no localStorage, mas para demo serve
-      const reader = new FileReader();
-      reader.onload = (evt) => {
-        setTemplate({ ...template, videoFundo: evt.target?.result as string });
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    // Se o arquivo for pequeno (< 1MB), podemos usar Base64 para agilidade (opcional)
+    // Mas para garantir consistência e resolver o erro 413, vamos tentar S3 primeiro.
+    
+    try {
+      setIsUploading(true);
+      setUploadStatus('Iniciando upload AWS...');
+
+      // 1. Obter URL assinada
+      const resUrl = await fetch('/api/upload-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          filename: file.name,
+          contentType: file.type
+        })
+      });
+
+      if (!resUrl.ok) {
+        throw new Error('Falha na configuração AWS (Verifique AWS_BUCKET_NAME e Credenciais)');
+      }
+
+      const { uploadUrl, publicUrl } = await resUrl.json();
+
+      setUploadStatus('Enviando bytes...');
+
+      // 2. Upload direto para o S3 (PUT)
+      const uploadRes = await fetch(uploadUrl, {
+        method: 'PUT',
+        body: file,
+        headers: {
+          'Content-Type': file.type
+        }
+      });
+
+      if (!uploadRes.ok) {
+        throw new Error('Falha de permissão S3 (Verifique CORS no Bucket)');
+      }
+
+      // 3. Atualizar estado com a URL pública
+      setTemplate({ ...template, videoFundo: publicUrl });
+      console.log('✅ Vídeo enviado para S3:', publicUrl);
+      setUploadStatus('✅ Upload concluído!');
+
+    } catch (error: any) {
+      console.error('❌ Erro no upload S3:', error);
+      
+      // Fallback para Base64 se falhar (apenas se for pequeno o suficiente para não quebrar o save)
+      if (file.size < 3 * 1024 * 1024) { // 3MB limit
+        setUploadStatus('⚠️ AWS falhou. Usando modo local (Base64)...');
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+          setTemplate({ ...template, videoFundo: evt.target?.result as string });
+          setUploadStatus('⚠️ Modo local (apenas vídeos pequenos)');
+        };
+        reader.readAsDataURL(file);
+      } else {
+        setUploadStatus('❌ Erro no Upload (Arquivo muito grande para modo local)');
+        alert(`Erro ao enviar vídeo para AWS: ${error.message}\n\nComo o arquivo é grande (${(file.size/1024/1024).toFixed(1)}MB), o upload via S3 é obrigatório.`);
+      }
+    } finally {
+      setIsUploading(false);
+      e.target.value = ''; // Limpa o input
+      
+      // Limpa mensagem de status após 5 segundos
+      setTimeout(() => {
+        setUploadStatus(prev => prev.includes('✅') ? '' : prev);
+      }, 5000);
     }
   };
 
@@ -722,6 +796,17 @@ export default function AdminMotionBuilder() {
                       className="hidden"
                     />
                   </label>
+                  
+                  {/* Status do Upload */}
+                  {uploadStatus && (
+                    <div className={`mt-2 text-sm font-bold ${
+                      uploadStatus.includes('❌') ? 'text-red-400' : 
+                      uploadStatus.includes('⚠️') ? 'text-yellow-400' :
+                      uploadStatus.includes('✅') ? 'text-green-400' : 'text-blue-300'
+                    }`}>
+                      {uploadStatus}
+                    </div>
+                  )}
                   
                   <button
                     onClick={() => openAssetPicker('backgrounds', (url) => setTemplate({ ...template, videoFundo: url }))}

@@ -23,6 +23,7 @@ interface DadosProduto {
   imagem: string;
   nome: string;
   preco: string;
+  ajuste: 'cover' | 'contain' | 'fill';
 }
 
 // ============================================================================
@@ -100,9 +101,9 @@ export default function CriarVideo() {
   const [templateSelecionado, setTemplateSelecionado] = useState<Template | null>(null);
   const [templatesDisponiveis, setTemplatesDisponiveis] = useState<Template[]>([]);
   const [produtos, setProdutos] = useState<DadosProduto[]>([
-    { imagem: '', nome: '', preco: '' },
-    { imagem: '', nome: '', preco: '' },
-    { imagem: '', nome: '', preco: '' },
+    { imagem: '', nome: '', preco: '', ajuste: 'contain' },
+    { imagem: '', nome: '', preco: '', ajuste: 'contain' },
+    { imagem: '', nome: '', preco: '', ajuste: 'contain' },
   ]);
   const [whatsapp, setWhatsapp] = useState('');
   // Estado dinâmico para armazenar valores de camadas de texto livre e localização
@@ -147,6 +148,47 @@ export default function CriarVideo() {
   // ========================================================================
   // FUNÇÕES
   // ========================================================================
+
+  const base64ToBlob = (base64: string): Blob => {
+    const arr = base64.split(',');
+    const mime = arr[0].match(/:(.*?);/)?.[1] || 'image/png';
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new Blob([u8arr], { type: mime });
+  };
+
+  const uploadImageToS3 = async (base64: string): Promise<string> => {
+    if (!base64 || !base64.startsWith('data:')) return base64; // Já é URL ou vazio
+
+    const blob = base64ToBlob(base64);
+    const ext = blob.type.split('/')[1] || 'png';
+    const filename = `render-asset-${Date.now()}-${Math.random().toString(36).substr(2, 5)}.${ext}`;
+
+    // 1. Obter URL pré-assinada
+    const res = await fetch('/api/upload-url', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filename, contentType: blob.type }),
+    });
+
+    if (!res.ok) throw new Error('Falha ao obter permissão de upload');
+    const { uploadUrl, publicUrl } = await res.json();
+
+    // 2. Fazer Upload para o S3
+    const uploadRes = await fetch(uploadUrl, {
+      method: 'PUT',
+      body: blob,
+      headers: { 'Content-Type': blob.type },
+    });
+
+    if (!uploadRes.ok) throw new Error('Falha no upload da imagem para a nuvem');
+
+    return publicUrl;
+  };
 
   const handleAssetSelect = (url: string) => {
     if (currentProductIndex !== null) {
@@ -216,9 +258,12 @@ export default function CriarVideo() {
     }
   };
 
-  const atualizarProduto = (index: number, campo: 'nome' | 'preco', valor: string) => {
+  const atualizarProduto = (index: number, campo: 'nome' | 'preco' | 'ajuste', valor: string) => {
     const novosProdutos = [...produtos];
-    novosProdutos[index][campo] = valor;
+    novosProdutos[index] = {
+      ...novosProdutos[index],
+      [campo]: valor
+    };
     setProdutos(novosProdutos);
   };
 
@@ -232,27 +277,53 @@ export default function CriarVideo() {
     setStatusMessage('Iniciando...');
 
     try {
-      // 1. Iniciar Renderização (Upload + Lambda Trigger)
-      setStatusMessage('Enviando imagens para a nuvem...');
+      // 1. Processar uploads de imagens no CLIENTE para evitar erro 413
+      setStatusMessage('Otimizando imagens para a nuvem...');
+      
+      // Cria uma cópia dos produtos com as URLs do S3
+      const produtosProcessados = await Promise.all(produtos.map(async (p, index) => {
+        if (p.imagem && p.imagem.startsWith('data:')) {
+          try {
+            setStatusMessage(`Enviando imagem do Produto ${index + 1}...`);
+            const s3Url = await uploadImageToS3(p.imagem);
+            return { ...p, imagem: s3Url };
+          } catch (err) {
+            console.error(`Erro ao enviar imagem ${index + 1}:`, err);
+            throw new Error(`Falha ao enviar imagem do produto ${index + 1}. Tente uma imagem menor.`);
+          }
+        }
+        return p;
+      }));
+
+      // 2. Iniciar Renderização (Agora o payload é leve, só URLs)
+      setStatusMessage('Iniciando renderização...');
+      
+      const payload = {
+        template: templateSelecionado,
+        dados: { 
+          produtos: produtosProcessados, 
+          whatsapp, 
+          textos: textosExtras 
+        }
+      };
+
       const response = await fetch('/api/render', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          template: templateSelecionado,
-          dados: { 
-            produtos, 
-            whatsapp, 
-            textos: textosExtras // Corrigido aqui também para a API
-          }
-        })
+        body: JSON.stringify(payload)
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.error || 'Erro ao iniciar renderização');
+        if (response.status === 413) {
+          throw new Error('Payload muito grande mesmo após otimização. Contate o suporte.');
+        }
+        const data = await response.json();
+        // Mostra detalhes se houver, para facilitar debug (ex: erro da Lambda)
+        throw new Error(data.details || data.error || `Erro na API (${response.status})`);
       }
 
+      const data = await response.json();
+      
       const { renderId, bucketName } = data;
       setStatusMessage('Renderizando na AWS Lambda...');
 
@@ -527,6 +598,30 @@ export default function CriarVideo() {
                           className="hidden"
                         />
                       </label>
+                    )}
+                    {/* Opções de Ajuste da Imagem */}
+                    {produto.imagem && (
+                      <div className="flex gap-2 justify-center mt-2">
+                        {[
+                          { val: 'cover', label: '🖼️ Preencher', desc: 'Corta bordas' },
+                          { val: 'contain', label: '📐 Ajustar', desc: 'Mostra tudo' },
+                        ].map((opt) => (
+                          <button
+                            key={opt.val}
+                            onClick={() => atualizarProduto(index, 'ajuste', opt.val)}
+                            className={`
+                              px-3 py-1 text-xs rounded-full border transition-all flex flex-col items-center
+                              ${produto.ajuste === opt.val 
+                                ? 'bg-blue-600 text-white border-blue-500 shadow-sm' 
+                                : 'bg-gray-800 text-gray-400 border-gray-600 hover:bg-gray-700'
+                              }
+                            `}
+                            title={opt.desc}
+                          >
+                            <span className="font-bold">{opt.label}</span>
+                          </button>
+                        ))}
+                      </div>
                     )}
                   </div>
 

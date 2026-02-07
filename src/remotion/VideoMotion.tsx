@@ -58,6 +58,7 @@ interface DadosCliente {
     imagem: string;
     nome: string;
     preco: string;
+    ajuste?: 'cover' | 'contain' | 'fill';
   }>;
   whatsapp?: string;
   localizacao?: string;
@@ -159,7 +160,7 @@ const LayerComponent: React.FC<{
                 left: 0,
                 width: '100%',
                 height: '100%',
-                objectFit: (layer.estilos?.objectFit as any) || 'cover', // Usa configuração do Admin
+                objectFit: (produto.ajuste as any) || (layer.estilos?.objectFit as any) || 'cover', // Prioriza escolha do cliente, depois admin
               }}
             />
           ) : (

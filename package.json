@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.983.0",
+    "@aws-sdk/s3-request-presigner": "^3.985.0",
     "@remotion/google-fonts": "4.0.417",
     "@remotion/lambda": "4.0.417",
     "@remotion/paths": "4.0.417",
